@@ -58,6 +58,18 @@ def gh(method: str, path: str, token: str, body: dict | None = None) -> tuple[in
             return exc.code, {"message": raw[:300]}
 
 
+def scrub_token(token: str) -> None:
+    """.git/config 等にトークンが残っていたら除去する（保険）。"""
+    cfg = ROOT / ".git" / "config"
+    if not cfg.exists():
+        return
+    text = cfg.read_text(encoding="utf-8")
+    if token in text or "x-access-token" in text:
+        clean = text.replace(f"x-access-token:{token}@", "").replace(token, "")
+        cfg.write_text(clean, encoding="utf-8")
+        print("[ok] .git/config からトークンを除去しました")
+
+
 def run(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
     print("  $", " ".join(cmd[:2]), "…")
     return subprocess.run(cmd, cwd=ROOT, check=check,
@@ -119,13 +131,20 @@ def main() -> int:
                             capture_output=True, text=True).stdout.strip() or "main"
     push_url = f"https://x-access-token:{token}@github.com/{owner}/{repo}.git"
     print(f"[push] {branch} → origin/{branch}")
-    res = subprocess.run(["git", "push", "-u", push_url, f"{branch}:{branch}"],
+    # 注意: `-u` を付けるとトークン付きURLが branch.<name>.remote に保存されてしまうため、
+    #       push 自体は -u なしで行い、upstream はあとから origin に設定し直す。
+    res = subprocess.run(["git", "push", push_url, f"{branch}:{branch}"],
                          cwd=ROOT, capture_output=True, text=True)
     out = (res.stdout + res.stderr).replace(token, "***")
     print(out.strip())
     if res.returncode != 0:
         print("❌ push に失敗しました", file=sys.stderr)
         return 1
+
+    # --- 後片付け: tracking を origin（トークンなし）に向ける ---------------
+    run(["git", "fetch", "origin"], check=False)
+    run(["git", "branch", "--set-upstream-to", f"origin/{branch}", branch], check=False)
+    scrub_token(token)
 
     print(f"\n🎉 完了: https://github.com/{owner}/{repo}")
     print("   次のステップ: Render → New + → Blueprint → このリポジトリを選択")
