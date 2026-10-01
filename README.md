@@ -235,10 +235,15 @@ GitHub に push して Render で読み込むだけでデプロイできます�
 
 1. GitHub にリポジトリを作成して push
    ```bash
+   # A) 手動
    git init -b main
    git add -A && git commit -m "X Trends Dashboard"
    git remote add origin https://github.com/<user>/<repo>.git
    git push -u origin main
+
+   # B) 補助スクリプト（リポジトリ作成 + push を一括。トークンは .git/config に残しません）
+   export GITHUB_TOKEN=ghp_xxxxxxxx        # fine-grained: Contents=RW (+Administration=RW)
+   python scripts/push_github.py <owner> x-trends public
    ```
 2. Render Dashboard → **New +** → **Blueprint** → 対象リポジトリを選択
    （GitHub App のインストール許可が必要）
