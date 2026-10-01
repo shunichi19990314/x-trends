@@ -1,0 +1,13 @@
+{
+  "name": "X Trends Dashboard",
+  "short_name": "X Trends",
+  "description": "X（旧Twitter）のトレンドを地域別にまとめて表示するダッシュボード",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#070a11",
+  "theme_color": "#0b0f17",
+  "lang": "ja",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

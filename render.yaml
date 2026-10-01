@@ -1,0 +1,70 @@
+# ============================================================================
+# Render Blueprint — X Trends Dashboard
+#
+# 使い方:
+#   1. このリポジトリを GitHub に push
+#   2. Render Dashboard → New + → Blueprint → リポジトリを選択
+#      （render.yaml を自動検出して以下の構成でサービスが作られます）
+#   3. 環境変数の入力画面で X_BEARER_TOKEN などを設定（未設定ならデモモードで起動）
+#
+# 注意:
+#   - free プランはディスクが永続化されないため、デプロイ/再起動のたびに
+#     履歴（SQLite）がリセットされ、demo履歴のシードからやり直しになります。
+#     履歴を貯めたい場合は plan を starter 以上にして、末尾の disk: を有効化してください。
+#   - free プランは15分アクセスが無いとスリープし、収集(poller)も止まります。
+# ============================================================================
+
+services:
+  - type: web
+    name: x-trends
+    runtime: python
+    plan: free
+    region: singapore           # 日本からのレイテンシが小さいリージョン
+    branch: main
+    numInstances: 1             # poller がプロセス内常駐するため必ず 1
+
+    buildCommand: pip install --no-cache-dir -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /api/health
+
+    envVars:
+      # --- ランタイム ---
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: HOST
+        value: 0.0.0.0
+      - key: DB_PATH
+        value: /opt/render/project/src/data/trends.db
+
+      # --- データソース（Dashboard で入力する。空ならデモモード） ---
+      - key: TRENDS_PROVIDER
+        sync: false             # official | twitterapiio | demo
+      - key: X_BEARER_TOKEN
+        sync: false             # 公式 X API v2 の Bearer Token
+      - key: TWITTERAPI_KEY
+        sync: false             # 代替プロバイダ（任意）
+
+      # --- 収集設定（課金に直結するので控えめな既定値） ---
+      - key: POLLER_ENABLED
+        value: "true"
+      - key: POLL_INTERVAL
+        value: "15"             # 分。X のトレンドは概ね5分更新だが課金とのトレードオフ
+      - key: WATCH_WOEIDS
+        value: "1,23424856,1118370"   # 全世界 / 日本 / 東京
+      - key: SEED_HISTORY
+        value: "true"           # 履歴が空のときデモ2日分を生成（demo時のみ動作）
+      - key: HISTORY_DAYS
+        value: "7"
+
+      # --- 公開するなら必ず設定（空なら認証なし） ---
+      - key: ACCESS_TOKEN
+        sync: false
+
+    # ========================================================================
+    # 履歴を永続化したい場合（有料プラン専用 / free では disk を付けられません）
+    # plan: starter に変更したうえで、以下のコメントを外してください。
+    # ========================================================================
+    # disk:
+    #   name: trends-data
+    #   mountPath: /opt/render/project/src/data
+    #   sizeGB: 1

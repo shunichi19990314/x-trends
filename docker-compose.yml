@@ -1,0 +1,15 @@
+services:
+  x-trends:
+    build: .
+    container_name: x-trends
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DB_PATH=/app/data/trends.db
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
